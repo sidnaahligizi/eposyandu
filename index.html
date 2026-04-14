@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Posyandu Belajar Inovasi</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        /* Sembunyikan elemen secara default untuk SPA feeling */
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+    <div id="loginScreen" class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white p-8 rounded-2xl shadow-lg w-full max-w-sm">
+            <div class="text-center mb-6">
+                <h1 class="text-3xl font-bold text-teal-600">E-Posyandu</h1>
+                <p class="text-gray-500 text-sm">Masuk sebagai Kader</p>
+            </div>
+            <input type="text" id="username" placeholder="Username" class="w-full mb-4 px-4 py-3 border rounded-xl focus:ring-teal-500 focus:border-teal-500">
+            <input type="password" id="password" placeholder="Password" class="w-full mb-6 px-4 py-3 border rounded-xl focus:ring-teal-500 focus:border-teal-500">
+            <button onclick="login()" class="w-full bg-teal-600 text-white py-3 rounded-xl font-bold hover:bg-teal-700 transition">MASUK</button>
+        </div>
+    </div>
+
+    <div id="mainApp" class="hidden pb-20">
+        <div class="bg-teal-600 text-white p-4 shadow-md sticky top-0 z-10">
+            <div class="flex justify-between items-center max-w-md mx-auto">
+                <h1 class="text-xl font-bold">Input Penimbangan</h1>
+                <button onclick="logout()" class="text-teal-100 hover:text-white text-sm">Logout</button>
+            </div>
+        </div>
+
+        <div class="p-4 max-w-md mx-auto">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Pilih Anak</label>
+                    <select id="selectAnak" onchange="autoFillData()" class="w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50">
+                        <option value="">-- Memuat Data... --</option>
+                    </select>
+                </div>
+
+                <input type="hidden" id="nik">
+                <input type="hidden" id="tglLahir">
+                <input type="hidden" id="namaIbu">
+                <input type="hidden" id="noWa">
+                
+                <div class="mb-4">
+                    <p class="text-xs text-gray-500 mb-1">NIK (Masked): <span id="displayNik" class="font-bold text-gray-800">-</span></p>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Berat (Kg)</label>
+                        <input type="number" step="0.1" id="bb" class="w-full px-4 py-3 border rounded-xl" placeholder="0.0">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Tinggi (Cm)</label>
+                        <input type="number" step="0.1" id="tb" class="w-full px-4 py-3 border rounded-xl" placeholder="0.0">
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">LiLA (Cm)</label>
+                    <input type="number" step="0.1" id="lila" class="w-full px-4 py-3 border rounded-xl" placeholder="0.0">
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Jenis PMT</label>
+                    <select id="pmt" class="w-full px-4 py-3 border rounded-xl">
+                        <option value="Bubur Kacang Hijau">Bubur Kacang Hijau</option>
+                        <option value="Telur Rebus & Pisang">Telur Rebus & Pisang</option>
+                        <option value="Biskuit Balita">Biskuit Balita</option>
+                    </select>
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Status Konsumsi</label>
+                    <select id="statusKonsumsi" class="w-full px-4 py-3 border rounded-xl">
+                        <option value="Habis">Habis</option>
+                        <option value="Tidak Habis">Tidak Habis</option>
+                    </select>
+                </div>
+
+                <button id="btnSimpan" onclick="simpanData()" class="w-full bg-teal-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-teal-700 shadow-lg transition">
+                    SIMPAN & KIRIM WA
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // GANTI DENGAN URL WEB APP GOOGLE APPS SCRIPT ANDA
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbxY53-iueHTbYjsjebe1kpT9Lcy9TQ9SKS0WPZskaPnrzHoRalfOkwosKHoCo5FlkU/exec'; 
+        let dataAnakGlobal = [];
+
+        // --- SISTEM LOGIN SEDERHANA ---
+        function login() {
+            const user = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+            if(user === 'kader' && pass === '1234') { // Hardcode sederhana sesuai request
+                document.getElementById('loginScreen').classList.add('hidden');
+                document.getElementById('mainApp').classList.remove('hidden');
+                fetchDataAnak();
+            } else {
+                Swal.fire('Error', 'Username atau Password salah!', 'error');
+            }
+        }
+
+        function logout() {
+            document.getElementById('mainApp').classList.add('hidden');
+            document.getElementById('loginScreen').classList.remove('hidden');
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+        }
+
+        // --- FETCH DATA ANAK DARI GAS ---
+        async function fetchDataAnak() {
+            try {
+                const response = await fetch(GAS_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'getDataAnak' })
+                });
+                const res = await response.json();
+                
+                if(res.status === 'success') {
+                    dataAnakGlobal = res.data;
+                    let options = '<option value="">-- Pilih Nama Anak --</option>';
+                    dataAnakGlobal.forEach((anak, index) => {
+                        options += `<option value="${index}">${anak['Nama Anak']}</option>`;
+                    });
+                    document.getElementById('selectAnak').innerHTML = options;
+                }
+            } catch (error) {
+                console.error('Gagal memuat data', error);
+                Swal.fire('Error', 'Gagal memuat data anak dari server.', 'error');
+            }
+        }
+
+        // --- AUTOFILL SAAT ANAK DIPILIH ---
+        function autoFillData() {
+            const index = document.getElementById('selectAnak').value;
+            if(index === "") return;
+
+            const anak = dataAnakGlobal[index];
+            document.getElementById('nik').value = anak['NIK'];
+            document.getElementById('tglLahir').value = anak['Tanggal Lahir'];
+            document.getElementById('namaIbu').value = anak['Nama Ibu'];
+            document.getElementById('noWa').value = anak['No WhatsApp'];
+            
+            // Masking NIK (Tampilkan 4 digit awal dan 4 digit akhir saja)
+            const nikStr = anak['NIK'].toString();
+            const maskedNik = nikStr.substring(0,4) + "********" + nikStr.substring(nikStr.length - 4);
+            document.getElementById('displayNik').innerText = maskedNik;
+        }
+
+        // --- SIMPAN DATA & KIRIM WA ---
+        async function simpanData() {
+            const index = document.getElementById('selectAnak').value;
+            const bb = document.getElementById('bb').value;
+            const tb = document.getElementById('tb').value;
+
+            // Validasi Input Cepat
+            if(index === "" || bb === "" || tb === "") {
+                Swal.fire('Peringatan', 'Mohon lengkapi pilihan anak, Berat Badan, dan Tinggi Badan!', 'warning');
+                return;
+            }
+
+            // Validasi Logis (Alert data tidak wajar)
+            if(bb < 1 || bb > 40) {
+                Swal.fire('Data Tidak Wajar', 'Silakan periksa kembali input Berat Badan.', 'error');
+                return;
+            }
+
+            const payload = {
+                nik: document.getElementById('nik').value,
+                namaAnak: dataAnakGlobal[index]['Nama Anak'],
+                tglLahir: document.getElementById('tglLahir').value,
+                namaIbu: document.getElementById('namaIbu').value,
+                noWa: document.getElementById('noWa').value,
+                bb: bb,
+                tb: tb,
+                lila: document.getElementById('lila').value,
+                pmt: document.getElementById('pmt').value,
+                statusKonsumsi: document.getElementById('statusKonsumsi').value
+            };
+
+            const btn = document.getElementById('btnSimpan');
+            btn.innerHTML = 'Menyimpan...';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch(GAS_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'simpanPenimbangan', payload: payload })
+                });
+                const res = await response.json();
+
+                if(res.status === 'success') {
+                    Swal.fire('Berhasil!', 'Data tersimpan & Laporan WA terkirim ke Ibu balita.', 'success');
+                    // Reset form
+                    document.getElementById('selectAnak').value = "";
+                    document.getElementById('bb').value = "";
+                    document.getElementById('tb').value = "";
+                    document.getElementById('lila').value = "";
+                    document.getElementById('displayNik').innerText = "-";
+                }
+            } catch (error) {
+                Swal.fire('Error', 'Terjadi kesalahan jaringan.', 'error');
+            } finally {
+                btn.innerHTML = 'SIMPAN & KIRIM WA';
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
